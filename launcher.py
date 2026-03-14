@@ -74,7 +74,7 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
         if root_entries:
             root_folder = root_entries[0].split("/", 1)[0]
         else:
-            # запасной вариант — общий префикс
+            
             root_folder = os.path.commonprefix(zf.namelist()).split("/", 1)[0]
 
         src_root = os.path.join(tmp_dir, root_folder)
@@ -102,18 +102,17 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
                 if filename == launcher_name:
                     continue
                 rel_path = os.path.normpath(os.path.join(rel_dir, filename))
-                # Корни для исключений/проверок в assets
+                
                 saves_root = os.path.normpath(os.path.join("assets", "saves"))
                 textures_root = os.path.normpath(os.path.join("assets", "textures"))
                 assets_root = os.path.normpath("assets")
 
-                # Не трогаем сейвы игрока
+                
                 saves_root = os.path.normpath(os.path.join("assets", "saves"))
                 if rel_path == saves_root or rel_path.startswith(saves_root + os.sep):
                     continue
 
-                # Внутри assets проверяем и чистим только то, что лежит в assets/textures;
-                # остальные подпапки (кроме saves выше) не трогаем.
+                
                 if rel_path.startswith(assets_root + os.sep) and not (
                     rel_path == textures_root
                     or rel_path.startswith(textures_root + os.sep)
@@ -146,7 +145,7 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
                 src_path = os.path.join(root, filename)
                 dest_path = os.path.join(dest_dir, filename)
 
-                # Перезаписываем файл
+                
                 shutil.copy2(src_path, dest_path)
 
         print("Обновление файлов завершено.")
