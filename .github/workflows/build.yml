@@ -5,13 +5,13 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch:  # можно запускать вручную
-  release:
-    types: [created]   # срабатывает при создании релиза
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write  # обязательно для загрузки в релиз
 
     steps:
     - name: Checkout code
@@ -37,10 +37,11 @@ jobs:
         name: AgeOfResources
         path: dist/AgeOfResources.exe
 
-    - name: Upload EXE to Release (if release was created)
-      if: github.event_name == 'release'
+    - name: Upload EXE to Release (if tag exists)
+      if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
         files: dist/AgeOfResources.exe
+        tag_name: ${{ github.ref_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
