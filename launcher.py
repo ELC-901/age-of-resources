@@ -47,11 +47,35 @@ def get_remote_version(timeout: float = 10.0) -> str | None:
 def download_latest_zip(timeout: float = 30.0) -> BytesIO | None:
     try:
         print("Скачиваю последнюю версию игры с GitHub...")
-        resp = requests.get(ZIP_URL, timeout=timeout)
+        resp = requests.get(ZIP_URL, timeout=timeout, stream=True)
         if resp.status_code != 200:
             print(f"Не удалось скачать архив (HTTP {resp.status_code}).")
             return None
-        return BytesIO(resp.content)
+        total = int(resp.headers.get("Content-Length", 0))
+        downloaded = 0
+        bar_width = 30
+        last_percent = -1
+        buf = BytesIO()
+        for chunk in resp.iter_content(chunk_size=8192):
+            if not chunk:
+                continue
+            buf.write(chunk)
+            downloaded += len(chunk)
+            if total > 0:
+                progress = downloaded / total
+                percent = int(progress * 100)
+                if percent != last_percent:
+                    last_percent = percent
+                    filled = int(bar_width * progress)
+                    bar = "█" * filled + "-" * (bar_width - filled)
+                    print(f"\r[{bar}] {percent}%", end="", flush=True)
+            else:
+                kb = downloaded // 1024
+                if kb % 128 == 0:
+                    print(f"\rСкачано ~{kb} КБ", end="", flush=True)
+        print()
+        buf.seek(0)
+        return buf
     except requests.RequestException as e:
         print(f"Ошибка скачивания архива: {e}")
         return None
@@ -64,7 +88,27 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
     tmp_dir = tempfile.mkdtemp(prefix="age_of_resources_update_")
     try:
         with ZipFile(zip_data) as zf:
-            zf.extractall(tmp_dir)
+            members = zf.infolist()
+            file_members = [m for m in members if not m.is_dir()]
+            total_zip_files = len(file_members)
+            extracted_files = 0
+            bar_width = 30
+            last_percent = -1
+
+            print("Распаковываю архив...")
+            for info in members:
+                zf.extract(info, tmp_dir)
+                if not info.is_dir() and total_zip_files > 0:
+                    extracted_files += 1
+                    progress = extracted_files / total_zip_files
+                    percent = int(progress * 100)
+                    if percent != last_percent:
+                        last_percent = percent
+                        filled = int(bar_width * progress)
+                        bar = "█" * filled + "-" * (bar_width - filled)
+                        print(f"\r[{bar}] {percent}%", end="", flush=True)
+            if total_zip_files > 0:
+                print()
 
             root_entries = [
                 name
@@ -82,7 +126,6 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
             print("Не удалось определить корневую папку в архиве.")
             return False
 
-        # считаем общее количество файлов, чтобы показать прогресс
         total_files = 0
         for root, dirs, files in os.walk(src_root):
             total_files += len(files)
@@ -90,6 +133,7 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
         print("Обновляю файлы игры...")
         copied_files = 0
         bar_width = 30
+        last_percent = -1
 
         for root, dirs, files in os.walk(src_root):
             rel_dir = os.path.relpath(root, src_root)
@@ -106,19 +150,20 @@ def extract_and_update_repo(zip_data: BytesIO) -> bool:
                 src_path = os.path.join(root, filename)
                 dest_path = os.path.join(dest_dir, filename)
 
-                # Перезаписываем файл
                 shutil.copy2(src_path, dest_path)
 
-                # обновляем прогресс-бар
                 copied_files += 1
                 if total_files > 0:
                     progress = copied_files / total_files
-                    filled = int(bar_width * progress)
-                    bar = "█" * filled + "-" * (bar_width - filled)
-                    print(f"\r[{bar}] {int(progress * 100)}%", end="", flush=True)
+                    percent = int(progress * 100)
+                    if percent != last_percent:
+                        last_percent = percent
+                        filled = int(bar_width * progress)
+                        bar = "█" * filled + "-" * (bar_width - filled)
+                        print(f"\r[{bar}] {percent}%", end="", flush=True)
 
         if total_files > 0:
-            print()  # перенос строки после прогресс-бара
+            print()  
 
         print("Обновление файлов завершено.")
         return True
@@ -168,10 +213,10 @@ if __name__ == "__main__":
 
     try:
         import main_game
-        print("✅ main_game загружен")
+        print("main_game loaded")
         main_game.run_game()
-        print("⚠️ run_game завершилась")
+        print("run_game finished")
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        print(f"Error: {e}")
     finally:
-        input("👆 Нажми Enter, чтобы закрыть...")
+        input("enter to exit")

@@ -65,6 +65,14 @@ def run_game():
     font = pygame.font.Font(None, 22)
     font_large = pygame.font.Font(None, 28)
     clock = pygame.time.Clock()
+
+    #текстурыпостроек
+    building_textures = {
+        "mine": load_texture(os.path.join("textures_of_resources", "mine.png")),
+        "bed": load_texture(os.path.join("textures_of_resources", "bed.png")),
+        "sawmill": load_texture(os.path.join("textures_of_resources", "sawmill.png")),
+        "default": load_texture(os.path.join("textures_of_resources", "wood.png")),
+    }
     
     menu_mode = "main"
     selected_save = 0
@@ -550,17 +558,16 @@ def run_game():
                     screen.blit(country_text, text_rect)
 
             if t.custom_data and t.custom_data.get("building"):
-                building_type = t.custom_data["building"]
-                if building_type == "mine":
-                    sym = "M"
-                elif building_type == "bed":
-                    sym = "B"
-                elif building_type == "sawmill":
-                    sym = "L"
-                else:
-                    sym = "?"
-                btxt = font.render(sym, True, (255, 255, 0))
-                screen.blit(btxt, (rx + 2, ry + 2))
+                b = t.custom_data.get("building")
+                buildings = b if isinstance(b, list) else [b]
+                icon_size = max(12, ts // 3)
+                offset_x = 0
+                for btype in buildings[:3]:
+                    tex = building_textures.get(btype) or building_textures.get("default")
+                    if tex:
+                        icon = pygame.transform.scale(tex, (icon_size, icon_size))
+                        screen.blit(icon, (rx + 2 + offset_x, ry + 2))
+                        offset_x += icon_size + 2
 
         return gx, gy, ts
 
